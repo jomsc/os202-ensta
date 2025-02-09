@@ -11,7 +11,7 @@ CXXFLAGS2 = ${CXXFLAGS} -O2 -march=native -Wall
 CXXFLAGS += -O3 -march=native -Wall
 endif
 
-ALL= calcul_pi.exe TestProductMatrix.exe test_product_matrice_blas.exe 
+ALL= calcul_pi.exe TestProductMatrix.exe test_product_matrice_blas.exe jeton.exe
 
 default:	help
 
@@ -31,6 +31,9 @@ TestProductMatrix.exe : TestProductMatrix.o Matrix.hpp Matrix.o ProdMatMat.o
 
 test_product_matrice_blas.exe : test_product_matrice_blas.o Matrix.hpp Matrix.o
 	$(CXX) $(CXXFLAGS2) $^ -o $@ $(LIB)	$(BLAS)
+
+jeton.exe : jeton.c
+	$(MPICC) $^ -o $@
 
 help:
 	@echo "Available targets : "

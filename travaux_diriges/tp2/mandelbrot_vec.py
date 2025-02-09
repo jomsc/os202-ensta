@@ -6,7 +6,6 @@ from math import log
 from time import time
 import matplotlib.cm
 
-
 class MandelbrotSet:
 
     def __init__(self, max_iterations : int, escape_radius : float = 2. ):

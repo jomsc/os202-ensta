@@ -1,15 +1,17 @@
-# include <chrono>
-# include <random>
-# include <cstdlib>
-# include <sstream>
-# include <string>
-# include <fstream>
-# include <iostream>
-# include <iomanip>
-# include <mpi.h>
+#include <chrono>
+#include <random>
+#include <cstdlib>
+#include <sstream>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <iomanip>
+#include <mpi.h>
+
+#define NB_POINTS 20000000
 
 // Attention , ne marche qu'en C++ 11 ou supérieur :
-double approximate_pi( unsigned long nbSamples ) 
+unsigned long count_points( unsigned long nbSamples ) 
 {
     typedef std::chrono::high_resolution_clock myclock;
     myclock::time_point beginning = myclock::now();
@@ -26,46 +28,39 @@ double approximate_pi( unsigned long nbSamples )
         if ( x*x+y*y<=1 ) nbDarts ++;
     }
     // Number of nbDarts throwed in the unit disk
-    double ratio = double(nbDarts)/double(nbSamples);
-    return 4*ratio;
+    return nbDarts;
 }
 
 int main( int nargs, char* argv[] )
 {
-	// On initialise le contexte MPI qui va s'occuper :
-	//    1. Créer un communicateur global, COMM_WORLD qui permet de gérer
-	//       et assurer la cohésion de l'ensemble des processus créés par MPI;
-	//    2. d'attribuer à chaque processus un identifiant ( entier ) unique pour
-	//       le communicateur COMM_WORLD
-	//    3. etc...
+	int nbp, rank;
 	MPI_Init( &nargs, &argv );
-	// Pour des raisons de portabilité qui débordent largement du cadre
-	// de ce cours, on préfère toujours cloner le communicateur global
-	// MPI_COMM_WORLD qui gère l'ensemble des processus lancés par MPI.
+
 	MPI_Comm globComm;
 	MPI_Comm_dup(MPI_COMM_WORLD, &globComm);
-	// On interroge le communicateur global pour connaître le nombre de processus
-	// qui ont été lancés par l'utilisateur :
-	int nbp;
+	
 	MPI_Comm_size(globComm, &nbp);
-	// On interroge le communicateur global pour connaître l'identifiant qui
-	// m'a été attribué ( en tant que processus ). Cet identifiant est compris
-	// entre 0 et nbp-1 ( nbp étant le nombre de processus qui ont été lancés par
-	// l'utilisateur )
-	int rank;
 	MPI_Comm_rank(globComm, &rank);
-	// Création d'un fichier pour ma propre sortie en écriture :
-	std::stringstream fileName;
-	fileName << "Output" << std::setfill('0') << std::setw(5) << rank << ".txt";
-	std::ofstream output( fileName.str().c_str() );
+	
+	unsigned long ptstoprocess = NB_POINTS/nbp;
+	if (rank==nbp-1) { ptstoprocess += NB_POINTS-nbp*ptstoprocess; }
 
-	// Rajout de code....
+	unsigned long points = count_points(ptstoprocess);
 
-	output.close();
-	// A la fin du programme, on doit synchroniser une dernière fois tous les processus
-	// afin qu'aucun processus ne se termine pendant que d'autres processus continue à
-	// tourner. Si on oublie cet instruction, on aura une plantage assuré des processus
-	// qui ne seront pas encore terminés.
+	if (rank != 0) {
+		MPI_Send(&points, 1, MPI_UNSIGNED_LONG, 0, 1, globComm);
+	} else {
+		for (int i=1;i<nbp;i++) {
+			unsigned long nbReceived;
+			MPI_Recv(&nbReceived, 1, MPI_UNSIGNED_LONG, i, 1, globComm, MPI_STATUS_IGNORE);
+			points += nbReceived;
+		}
+		
+		double ratio = 4*double(points)/double(NB_POINTS);
+
+		std::cout << "Pi = " << ratio << std::endl;
+	}
+
 	MPI_Finalize();
 	return EXIT_SUCCESS;
 }
