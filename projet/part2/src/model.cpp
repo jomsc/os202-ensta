@@ -1,5 +1,4 @@
-
- #include <stdexcept>
+#include <stdexcept>
 #include <cmath>
 #include <iostream>
 #include "model.hpp"
